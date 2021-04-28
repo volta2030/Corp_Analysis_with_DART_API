@@ -13,5 +13,11 @@ pip install requirements.txt
 
 https://opendart.fss.or.kr/
 
+### 3. main.py에서 api_key부분에 인증키 입력 후 실행
+```
+python main.py
+```
+
+### 결과
 
 ![dart](https://user-images.githubusercontent.com/65960990/116415223-2ed02e00-a874-11eb-9966-1694e941b6da.png)
