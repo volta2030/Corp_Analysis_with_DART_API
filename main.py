@@ -5,10 +5,11 @@ import json
 import datetime
 import pandas as pd
 import time
+import os
 
 df = pd.read_html('http://kind.krx.co.kr/corpgeneral/corpList.do?method=download&searchType=13', header=0)[0]
 
-def find_stock_code(api_key,corp_code):
+def get_stock_code(api_key,corp_code):
     url = 'https://opendart.fss.or.kr/api/company.json?crtfc_key='+api_key+'&corp_code='+str(corp_code)
     html = requests.get(url).text
     result = str(BeautifulSoup(html, 'html.parser'))
@@ -18,7 +19,6 @@ def find_stock_code(api_key,corp_code):
     #     df = pd.read_html('http://kind.krx.co.kr/corpgeneral/corpList.do?method=download&searchType=13', header=0)[0]
 
     return stock_code
-
 def get_market_cap_and_price(stock_code):
 
     url = 'https://finance.naver.com/item/main.nhn?code=' + stock_code
@@ -29,9 +29,13 @@ def get_market_cap_and_price(stock_code):
     soup = BeautifulSoup(html, 'html.parser')
 
     today = soup.select_one('#chart_area > div.rate_info > div')
+
     price = today.select_one('.blind')
     price = str(price.get_text())
     price = int(price.replace(',', ''))
+
+    trading_volume = str(soup.findAll("span",{"class":"blind"})[18]).replace('<span class="blind">','').replace('</span>','')
+
     try:
         market_cap = int(
             str(soup.find('em', id='_market_sum')).replace('\t', '').replace('\n', '').replace('</em>', '').replace(
@@ -41,7 +45,7 @@ def get_market_cap_and_price(stock_code):
             str(soup.find('em', id='_market_sum')).replace('\t', '').replace('\n', '').replace('</em>', '').replace(
                 '<em id="_market_sum">', '').replace(',', '').replace("조", '')) * 100000000
 
-    return price, market_cap
+    return price, market_cap, trading_volume
 def get_current_income_eps_total_cap(corp_code):
     url = "https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?crtfc_key=" + api_key + "&corp_code=" + corp_code + "&bsns_year=2020&reprt_code=11011&fs_div=CFS"
     html = requests.get(url).text
@@ -56,6 +60,7 @@ def get_current_income_eps_total_cap(corp_code):
     count_curent_income=0
     count_eps = 0
     count_total_cap=0
+
     for i in range(len(json_object['list'])):
         if count_curent_income==0 and (json_object['list'][i]['account_nm'] == '당기순이익' or json_object['list'][i]['account_nm'] == '당기순이익(손실)' or json_object['list'][i]['account_nm'] == '계속영업당기순이익(손실)'):
             curnet_income = str(json_object['list'][i]['thstrm_amount'])
@@ -99,10 +104,14 @@ def get_current_income_eps_total_cap(corp_code):
         #     retained_earn = int(json_object['list'][i]['thstrm_amount'])
     return curnet_income, eps, total_cap
 
-api_key='your_api_key'#DART에서 신청한 자신의 API 주소를 입력하세요
+with open(os.path.join(os.path.abspath(''), 'api_key.txt')) as f:
+    api_key=str(f.read())
+
+
+#api_key='3ce42ee675ce702d5b1467313be878324d5e6dfc'#DART에서 신청한 자신의 API 주소를 입력하세요
 
 token = 0
-
+print("[CADA], 종료는 q 입력")
 while token == 0:
     try:
         corp_name = input("회사명을 입력하세요(예 : 삼성전자): ")
@@ -112,13 +121,13 @@ while token == 0:
             print("프로그램을 종료합니다")
             break
 
-        corp_code = corp_code_fn.find(corp_name)
+        corp_code, stock_code = corp_code_fn.find(corp_name)
         is_in = df['회사명'] == corp_name
-        stock_code = find_stock_code(api_key, corp_code)
-        if stock_code[0]=='':
-            stock_code = str(df[is_in]['종목코드'].item()).zfill(6)
+        if stock_code is '':
+            stock_code = get_stock_code(api_key, corp_code)
+            #stock_code = str(df[is_in]['종목코드'].item()).zfill(6)
 
-        price, market_cap = get_market_cap_and_price(stock_code)
+        price, market_cap, trading_volume = get_market_cap_and_price(stock_code)
         curnet_income, eps, total_cap = get_current_income_eps_total_cap(corp_code)
 
         PER = (price/eps).__round__(2)
@@ -128,6 +137,7 @@ while token == 0:
         print('=========================================')
         print('종목코드|',stock_code)
         print('시가총액|',int(market_cap/100000000),'억원')
+        print('거래량  |', trading_volume)
         print('현재가  |',price,'원')
         print('EPS    |',eps,'원')
         print("PER    |",PER)
