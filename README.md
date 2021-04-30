@@ -20,4 +20,4 @@ python main.py
 
 ### 결과
 
-![dart](https://user-images.githubusercontent.com/65960990/116415223-2ed02e00-a874-11eb-9966-1694e941b6da.png)
+![wwww](https://user-images.githubusercontent.com/65960990/116642670-5cb78e80-a9aa-11eb-8872-728048770c89.png)
